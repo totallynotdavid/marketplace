@@ -2,8 +2,8 @@ import * as v from "valibot";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, hashPassword } from "./auth/password.ts";
 import { emailField } from "./forms.ts";
 
-// The only way an admin comes to exist. The statement inserts nothing when an admin is already
-// there, and fails on an email that belongs to another user, so a seller is never promoted.
+// This statement creates the first admin only. It inserts nothing when an admin exists and cannot
+// promote another user's account because the email remains subject to the unique constraint.
 export async function adminInsert(
   email: string,
   password: string,
