@@ -57,7 +57,7 @@ export async function register(role: "seller" | "funder", ip?: string): Promise<
   return { email, id: row!.id, cookie };
 }
 
-// The admin path in production is the create-admin script, so the test inserts the row the same way.
+// Tests insert the same admin row that the production create-admin script creates.
 export async function makeAdmin(): Promise<Account> {
   const { hashPassword } = await import("../src/auth/password.ts");
   const email = `admin${++counter}@example.com`;
