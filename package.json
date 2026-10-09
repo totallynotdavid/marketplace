@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "cf dev",
+    "dev": "CLOUDFLARE_REGISTRY_PATH=.wrangler/registry cf dev --persist-to .wrangler/state",
+    "db:migrate:local": "CLOUDFLARE_REGISTRY_PATH=.wrangler/registry cf d1 migrations apply 12345678-1234-4234-8234-123456789abc --local --persist-to .wrangler/state",
     "build": "cf build",
     "deploy": "cf deploy",
     "create-admin": "bun scripts/create-admin.ts",

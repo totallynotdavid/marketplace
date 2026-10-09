@@ -22,25 +22,26 @@ Live deployment: <https://sentinel.caefisica.workers.dev>
 
 ```bash
 bun install
-cf d1 migrations apply <database-id> --local
+bun run db:migrate:local
 bun run dev
 ```
 
 `bun run dev` starts the Worker with a local D1 database at the address it
-prints. The migration command creates the tables from
-`migrations/0001_init.sql`.
+prints. `bun run db:migrate:local` creates the tables from
+`migrations/0001_init.sql` in the local D1 state.
 
 ## Commands
 
-| Command                | Does                                               |
-| ---------------------- | -------------------------------------------------- |
-| `bun run test`         | Runs the tests against a real D1 database.         |
-| `bun run lint`         | Runs oxlint with type-aware rules.                 |
-| `bun run typecheck`    | Runs `tsc --noEmit`.                               |
-| `bun run format`       | Formats the code with oxfmt.                       |
-| `bun run build`        | Builds the Worker into `.cloudflare/output`.       |
-| `bun run deploy`       | Builds and deploys with `cf deploy`.               |
-| `bun run create-admin` | Creates the first admin in a deployed D1 database. |
+| Command                    | Does                                               |
+| -------------------------- | -------------------------------------------------- |
+| `bun run db:migrate:local` | Applies D1 migrations to the local database.       |
+| `bun run test`             | Runs the tests against a real D1 database.         |
+| `bun run lint`             | Runs oxlint with type-aware rules.                 |
+| `bun run typecheck`        | Runs `tsc --noEmit`.                               |
+| `bun run format`           | Formats the code with oxfmt.                       |
+| `bun run build`            | Builds the Worker into `.cloudflare/output`.       |
+| `bun run deploy`           | Builds and deploys with `cf deploy`.               |
+| `bun run create-admin`     | Creates the first admin in a deployed D1 database. |
 
 ## Deploy
 
