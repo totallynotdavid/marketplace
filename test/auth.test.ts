@@ -31,6 +31,55 @@ async function issueLink(adminCookie: string, userId: string): Promise<string> {
 const byText = (a: string, b: string) => a.localeCompare(b);
 const byNumber = (a: number, b: number) => a - b;
 
+function gatePasswordResetReads(database: D1Database): {
+  database: D1Database;
+  bothRead: Promise<void>;
+  release: () => void;
+} {
+  let reads = 0;
+  let release!: () => void;
+  const bothRead = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const gateStatement = (statement: D1PreparedStatement): D1PreparedStatement =>
+    new Proxy(statement, {
+      get(statementTarget, statementProperty, statementReceiver) {
+        if (statementProperty === "bind") {
+          return (...args: unknown[]) => gateStatement(statementTarget.bind(...args));
+        }
+        if (statementProperty !== "first") {
+          const value = Reflect.get(statementTarget, statementProperty, statementReceiver);
+          return typeof value === "function" ? value.bind(statementTarget) : value;
+        }
+        return async () => {
+          const first = Reflect.get(statementTarget, statementProperty, statementReceiver);
+          const result = await first.call(statementTarget);
+          reads++;
+          if (reads === 2) release();
+          await bothRead;
+          return result;
+        };
+      },
+    });
+  const gated = new Proxy(database, {
+    get(target, property, receiver) {
+      if (property !== "prepare") {
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      }
+      return (sql: string) => {
+        const statement = target.prepare(sql);
+        if (
+          sql !== "SELECT 1 AS live FROM password_resets WHERE token_digest = ? AND expires_at > ?"
+        )
+          return statement;
+        return gateStatement(statement);
+      };
+    },
+  });
+  return { database: gated, bothRead, release };
+}
+
 describe("registration", () => {
   it("creates a seller and signs them in", async () => {
     const res = await call("/register", {
@@ -492,12 +541,22 @@ describe("password reset", () => {
     const admin = await makeAdmin();
     const user = await register("seller");
     const token = await issueLink(admin.cookie, user.id);
-    const results = await Promise.all(
-      ["first password here", "second password here"].map((password) =>
-        call(`/reset/${token}`, { form: { password } }),
-      ),
-    );
+    const gate = gatePasswordResetReads(env.DB);
+    const first = call(`/reset/${token}`, {
+      database: gate.database,
+      form: { password: "first password here" },
+    });
+    const second = call(`/reset/${token}`, {
+      database: gate.database,
+      form: { password: "second password here" },
+    });
+    await gate.bothRead;
+    gate.release();
+    const results = await Promise.all([first, second]);
     expect(results.map((r) => r.status).toSorted(byNumber)).toEqual([303, 400]);
+    expect(
+      (await env.DB.prepare("SELECT COUNT(*) AS n FROM password_resets").first<{ n: number }>())!.n,
+    ).toBe(0);
   });
 
   it("enforces the password length on redemption", async () => {

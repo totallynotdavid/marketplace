@@ -7,6 +7,7 @@ export const ORIGIN = "https://sentinel.test";
 export const PASSWORD = "correct horse battery";
 
 type CallOptions = {
+  database?: D1Database;
   method?: string;
   form?: Record<string, string>;
   cookie?: string;
@@ -29,7 +30,7 @@ export async function call(path: string, options: CallOptions = {}): Promise<Res
   const ctx = createExecutionContext();
   return worker.fetch(
     new Request(ORIGIN + path, { method, headers, body, redirect: "manual" }),
-    env,
+    options.database ? { DB: options.database } : env,
     ctx,
   );
 }
