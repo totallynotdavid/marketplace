@@ -33,7 +33,10 @@ adminRoutes.get("/admin/audit", async (c) => {
 // Each action writes its audit row in the same batch as the change it records.
 function audit(db: D1Database, adminId: string, action: string, target: string, now: number) {
   return db
-    .prepare("INSERT INTO audit_log (admin_id, action, target, created_at) VALUES (?, ?, ?, ?)")
+    .prepare(
+      `INSERT INTO audit_log (admin_id, action, target, created_at)
+       SELECT ?1, ?2, ?3, ?4 WHERE changes() > 0`,
+    )
     .bind(adminId, action, target, now);
 }
 
@@ -42,18 +45,19 @@ adminRoutes.post("/admin/users/:id/deactivate", async (c) => {
   const admin = c.get("user")!;
   const id = c.req.param("id");
   const target = await db
-    .prepare("SELECT role FROM users WHERE id = ?")
+    .prepare("SELECT role, active FROM users WHERE id = ?")
     .bind(id)
-    .first<{ role: string }>();
+    .first<{ role: string; active: number }>();
   if (!target) return notFound(c);
   if (target.role === "admin") return conflict(c, "An admin cannot be deactivated.");
+  if (!target.active) return c.redirect("/admin/users", 303);
 
-  // Pending offers must not outlive the user's listing or bid: the accept path relies on every
-  // pending offer sitting on an open listing. The offers on the seller's listings are rejected
-  // before the listings are cancelled, because the subquery selects the still-open ones.
+  // Reject the seller's pending offers before cancelling the listings. The accept path relies on
+  // every pending offer belonging to an open listing, and the subquery selects only open ones.
   const now = Date.now();
   await db.batch([
-    db.prepare("UPDATE users SET active = 0 WHERE id = ?").bind(id),
+    db.prepare("UPDATE users SET active = 0 WHERE id = ? AND active = 1").bind(id),
+    audit(db, admin.id, "deactivate", id, now),
     db.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id),
     db.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(id),
     db
@@ -73,7 +77,6 @@ adminRoutes.post("/admin/users/:id/deactivate", async (c) => {
         "UPDATE listings SET status = 'cancelled', updated_at = ? WHERE seller_id = ? AND status = 'open'",
       )
       .bind(now, id),
-    audit(db, admin.id, "deactivate", id, now),
   ]);
   return c.redirect("/admin/users", 303);
 });
@@ -81,11 +84,16 @@ adminRoutes.post("/admin/users/:id/deactivate", async (c) => {
 adminRoutes.post("/admin/users/:id/reactivate", async (c) => {
   const db = c.env.DB;
   const id = c.req.param("id");
-  if (!(await db.prepare("SELECT 1 AS found FROM users WHERE id = ?").bind(id).first()))
-    return notFound(c);
+  const target = await db
+    .prepare("SELECT active FROM users WHERE id = ?")
+    .bind(id)
+    .first<{ active: number }>();
+  if (!target) return notFound(c);
+  if (target.active) return c.redirect("/admin/users", 303);
+  const now = Date.now();
   await db.batch([
-    db.prepare("UPDATE users SET active = 1 WHERE id = ?").bind(id),
-    audit(db, c.get("user")!.id, "reactivate", id, Date.now()),
+    db.prepare("UPDATE users SET active = 1 WHERE id = ? AND active = 0").bind(id),
+    audit(db, c.get("user")!.id, "reactivate", id, now),
   ]);
   return c.redirect("/admin/users", 303);
 });
