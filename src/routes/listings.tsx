@@ -96,9 +96,8 @@ listingRoutes.get("/listings/:id", async (c) => {
   return c.html(<ListingDetailPage user={user} {...found} />);
 });
 
-// A seller cancels their own listing and an admin cancels any. The offers are rejected in the
-// same batch. Each statement re-checks that the listing is still open, so a concurrent accept
-// or cancel leaves this one with nothing to change.
+// A seller cancels their own listing and an admin cancels any. The listing state changes first;
+// the audit row follows it, and pending offers settle in the same batch.
 listingRoutes.post("/listings/:id/cancel", allow("seller", "admin"), async (c) => {
   const db = c.env.DB;
   const user = c.get("user")!;
@@ -111,21 +110,19 @@ listingRoutes.post("/listings/:id/cancel", allow("seller", "admin"), async (c) =
   if (listing.status !== "open") return conflict(c, "Only an open listing can be cancelled.");
 
   const now = Date.now();
-  const stillOpen = "EXISTS (SELECT 1 FROM listings WHERE id = ?1 AND status = 'open')";
   const statements = [
     db
       .prepare(
-        `UPDATE offers SET status = 'rejected', updated_at = ?2
-         WHERE listing_id = ?1 AND status = 'pending' AND ${stillOpen}`,
+        "UPDATE listings SET status = 'cancelled', updated_at = ?2 WHERE id = ?1 AND status = 'open'",
       )
       .bind(id, now),
   ];
   if (user.role === "admin") {
-    statements.unshift(
+    statements.push(
       db
         .prepare(
           `INSERT INTO audit_log (admin_id, action, target, created_at)
-           SELECT ?2, 'cancel-listing', ?1, ?3 WHERE ${stillOpen}`,
+           SELECT ?2, 'cancel-listing', ?1, ?3 WHERE changes() > 0`,
         )
         .bind(id, user.id, now),
     );
@@ -133,13 +130,12 @@ listingRoutes.post("/listings/:id/cancel", allow("seller", "admin"), async (c) =
   statements.push(
     db
       .prepare(
-        "UPDATE listings SET status = 'cancelled', updated_at = ?2 WHERE id = ?1 AND status = 'open'",
+        "UPDATE offers SET status = 'rejected', updated_at = ?2 WHERE listing_id = ?1 AND status = 'pending'",
       )
       .bind(id, now),
   );
   const results = await db.batch(statements);
-  if (results.at(-1)?.meta.changes !== 1)
-    return conflict(c, "Only an open listing can be cancelled.");
+  if (results[0]?.meta.changes !== 1) return conflict(c, "Only an open listing can be cancelled.");
   return c.redirect(`/listings/${id}`, 303);
 });
 
