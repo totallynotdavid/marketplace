@@ -1,28 +1,12 @@
-name: web quality
+name: quality
 
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - "apps/web/**"
-      - "package.json"
-      - "bun.lock"
-      - "turbo.json"
-      - ".oxlintrc.json"
-      - ".oxfmtrc.json"
-      - ".github/workflows/web-quality.yml"
   push:
     branches:
       - main
       - master
-    paths:
-      - "apps/web/**"
-      - "package.json"
-      - "bun.lock"
-      - "turbo.json"
-      - ".oxlintrc.json"
-      - ".oxfmtrc.json"
-      - ".github/workflows/web-quality.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -33,7 +17,7 @@ permissions:
 
 jobs:
   quality:
-    name: format, lint, typecheck, build
+    name: format, lint, typecheck, test
     runs-on: ubuntu-latest
 
     steps:
@@ -56,3 +40,6 @@ jobs:
 
       - name: typecheck
         run: bun run typecheck
+
+      - name: test
+        run: bun run test
