@@ -557,6 +557,29 @@ describe("admin actions", () => {
     expect(log.results.map((r) => r.action)).toEqual(["deactivate", "reactivate"]);
   });
 
+  it("writes no audit row when deactivation or reactivation changes nothing", async () => {
+    const admin = await makeAdmin();
+    const user = await register("funder");
+    const deactivations = await Promise.all(
+      [1, 2].map(() =>
+        call(`/admin/users/${user.id}/deactivate`, { form: {}, cookie: admin.cookie }),
+      ),
+    );
+    expect(deactivations.map((res) => res.status).toSorted(byNumber)).toEqual([303, 303]);
+
+    const reactivations = await Promise.all(
+      [1, 2].map(() =>
+        call(`/admin/users/${user.id}/reactivate`, { form: {}, cookie: admin.cookie }),
+      ),
+    );
+    expect(reactivations.map((res) => res.status).toSorted(byNumber)).toEqual([303, 303]);
+
+    const log = await env.DB.prepare("SELECT action FROM audit_log ORDER BY id").all<{
+      action: string;
+    }>();
+    expect(log.results.map((r) => r.action)).toEqual(["deactivate", "reactivate"]);
+  });
+
   it("will not deactivate an admin, itself included", async () => {
     const admin = await makeAdmin();
     const other = await makeAdmin();
