@@ -1,9 +1,0 @@
-{
-  "name": "dev",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
-  "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:${containerEnv:HOME}/.bun/bin:${containerEnv:HOME}/.cargo/bin:${containerEnv:HOME}/.local/share/solana/install/active_release/bin:${containerEnv:HOME}/.avm/bin"
-  }
-}
