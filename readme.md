@@ -1,61 +1,61 @@
-# ⚔️ Sentinel
+# Sentinel
 
-Marketplace and agent stack for contract factoring.
+A marketplace for contract factoring. A seller lists a receivable a debtor owes.
+Funders offer a price below its face value. The seller accepts one offer.
+Sentinel records the listing and the offers; payment happens between the two
+parties.
 
-Sentinel is a multi-app monorepo:
+It is a Cloudflare Worker (Hono, server-rendered HTML) on a D1 database. Roles
+are `seller`, `funder` and `admin`. See [docs/decisions.md](docs/decisions.md)
+for the feature set and the auth design.
 
-- `apps/web`: marketplace and operator UI (Next.js, TypeScript, Tailwind)
-- `apps/agent`: FactorBridge AI service (Google ADK, LiteLLM, Supabase/PostgreSQL)
-- `apps/chain`: Solana/Anchor vault program workspace
+## Requirements
 
-## Setup and run
+- Bun 1.3 and Node 22.18 or later (`mise install` sets both up). The `cf` CLI
+  runs under Node.
+- A Cloudflare account on the Workers Paid plan to deploy. Hashing a password
+  takes about 160 ms of CPU, and the Free plan allows 10 ms per request.
 
-Prerequisites: Bun 1.x, Python 3.10+, Docker (optional), root `.env.local`.
-
-Full stack with Docker:
-
-```bash
-make up
-make down
-make logs
-make ps
-make reset
-make test
-```
-
-Web app only:
+## Run locally
 
 ```bash
-cd apps/web
 bun install
-bun dev
+bun run dev
 ```
 
-## Development commands
+`bun run dev` starts the Worker with a local D1 database at the address it
+prints. Create the tables once with the SQL in `migrations/0001_init.sql`.
 
-Run from `apps/web`:
+## Commands
+
+| Command                | Does                                               |
+| ---------------------- | -------------------------------------------------- |
+| `bun run test`         | Runs the tests against a real D1 database.         |
+| `bun run lint`         | Runs oxlint with type-aware rules.                 |
+| `bun run typecheck`    | Runs `tsc --noEmit`.                               |
+| `bun run format`       | Formats the code with oxfmt.                       |
+| `bun run build`        | Builds the Worker into `.cloudflare/output`.       |
+| `bun run deploy`       | Builds and deploys with `cf deploy`.               |
+| `bun run create-admin` | Creates the first admin in a deployed D1 database. |
+
+## Deploy
 
 ```bash
-bun run generate
-bun run generate:checkout
-bun x tsc --noEmit
-bun run build
-bun test:run
+cf auth login --no-browser
+cf d1 create --name sentinel
+cf d1 migrations apply <database-id>
+cf deploy
+ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=... bun run create-admin <database-id>
 ```
 
-Required env vars for `apps/web`:
-`POSTGRES_URL`, `NEXT_PUBLIC_SOLANA_CLUSTER`, `NEXT_PUBLIC_AGENT_API_URL`, `NEXT_PUBLIC_STOREFRONT_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`.
+`<database-id>` is the `id` that `cf d1 create` prints. A database change edits
+`migrations/0001_init.sql`; drop the database and run the steps again.
 
-Required env vars for `apps/agent`:
-`POSTGRES_URL`, `MODEL_PROVIDER`, and `HUGGINGFACE_API_KEY` or `OPENROUTER_API_KEY`.
+## Layout
 
-Optional env vars for `apps/agent`:
-`APIS_NET_PE_TOKEN`, `PORT`.
-
-## Docs
-
-- [AGENTS.md](/home/dubu/git/dev3pack3/AGENTS.md)
-- [apps/agent/readme.md](/home/dubu/git/dev3pack3/apps/agent/readme.md)
-- [apps/agent/docs/deployment_gcp.md](/home/dubu/git/dev3pack3/apps/agent/docs/deployment_gcp.md)
-- [apps/agent/docs/model_providers.md](/home/dubu/git/dev3pack3/apps/agent/docs/model_providers.md)
-- [apps/web/src/styles/readme.md](/home/dubu/git/dev3pack3/apps/web/src/styles/readme.md)
+- `src/index.ts`: Worker entry: `fetch` and the daily `scheduled` sweep.
+- `src/app.ts`: middleware order and route mounting.
+- `src/routes/`: public, listing, offer and admin routes.
+- `src/auth/`: passwords, tokens, sessions and rate limits.
+- `migrations/0001_init.sql`: the schema.
+- `test/`: tests that call the Worker's `fetch`.
