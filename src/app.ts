@@ -15,8 +15,8 @@ app.use(loadUser);
 
 app.route("/", authRoutes);
 
-// Everything registered below this line requires a signed-in user. A route added later is
-// closed by default; the public routes are the ones above.
+// Every route registered below this line requires a signed-in user. Routes are public only when
+// they are registered above this middleware.
 app.use(requireUser);
 
 app.route("/", listingRoutes);
