@@ -72,6 +72,31 @@ describe("listings", () => {
     expect(asA).not.toContain("Debtor of B");
   });
 
+  it("keeps a funder's sold and cancelled listings with their statuses", async () => {
+    const seller = await register("seller");
+    const funder = await register("funder");
+    const bystander = await register("funder");
+    const soldId = await createListing(seller, { debtorName: "Sold debtor" });
+    const cancelledId = await createListing(seller, { debtorName: "Cancelled debtor" });
+    await makeOffer(funder, soldId);
+    await makeOffer(funder, cancelledId);
+    await call(`/offers/${await offerId(soldId, funder.id)}/accept`, {
+      form: {},
+      cookie: seller.cookie,
+    });
+    await call(`/listings/${cancelledId}/cancel`, { form: {}, cookie: seller.cookie });
+
+    const asFunder = await (await call("/listings", { cookie: funder.cookie })).text();
+    expect(asFunder).toContain("Sold debtor");
+    expect(asFunder).toContain("sold");
+    expect(asFunder).toContain("Cancelled debtor");
+    expect(asFunder).toContain("cancelled");
+
+    const asBystander = await (await call("/listings", { cookie: bystander.cookie })).text();
+    expect(asBystander).not.toContain("Sold debtor");
+    expect(asBystander).not.toContain("Cancelled debtor");
+  });
+
   it("answers 404 when a seller opens another seller's listing", async () => {
     const owner = await register("seller");
     const other = await register("seller");
