@@ -127,11 +127,13 @@ describe("listings", () => {
     const admin = await makeAdmin();
     const seller = await register("seller");
     const id = await createListing(seller);
-    const res = await call(`/listings/${id}/cancel`, { form: {}, cookie: admin.cookie });
-    expect(res.status).toBe(303);
+    const results = await Promise.all(
+      [1, 2].map(() => call(`/listings/${id}/cancel`, { form: {}, cookie: admin.cookie })),
+    );
+    expect(results.map((res) => res.status).toSorted((a, b) => a - b)).toEqual([303, 409]);
     expect(await statusOf("listings", id)).toBe("cancelled");
-    const log = await env.DB.prepare("SELECT admin_id, action, target FROM audit_log").first();
-    expect(log).toEqual({ admin_id: admin.id, action: "cancel-listing", target: id });
+    const log = await env.DB.prepare("SELECT admin_id, action, target FROM audit_log").all();
+    expect(log.results).toEqual([{ admin_id: admin.id, action: "cancel-listing", target: id }]);
   });
 
   it("writes no audit row when the admin's cancel finds the listing already closed", async () => {
