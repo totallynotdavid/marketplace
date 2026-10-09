@@ -56,13 +56,18 @@ listingRoutes.get("/listings", async (c) => {
     user.role === "seller"
       ? "WHERE l.seller_id = ?"
       : user.role === "funder"
-        ? "WHERE l.status = 'open'"
+        ? `WHERE l.status = 'open'
+           OR EXISTS (
+             SELECT 1 FROM offers o
+             WHERE o.listing_id = l.id AND o.funder_id = ?
+           )`
         : "";
+  const params = user.role === "seller" || user.role === "funder" ? [user.id] : [];
   const { results } = await c.env.DB.prepare(
     `SELECT ${LISTING_COLUMNS} FROM listings l JOIN users u ON u.id = l.seller_id
      ${filter} ORDER BY l.created_at DESC LIMIT 200`,
   )
-    .bind(...(user.role === "seller" ? [user.id] : []))
+    .bind(...params)
     .all<ListingRow>();
   return c.html(<ListingsPage user={user} listings={results} />);
 });
