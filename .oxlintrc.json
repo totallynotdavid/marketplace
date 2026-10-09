@@ -1,16 +1,15 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "nextjs", "promise"],
+  "plugins": ["typescript", "unicorn", "oxc", "promise"],
   "categories": {
     "correctness": "error",
     "suspicious": "error"
   },
   "rules": {
     "no-debugger": "error",
-    "no-alert": "error",
-    "react/react-in-jsx-scope": "off"
+    "no-alert": "error"
   },
-  "ignorePatterns": ["**/node_modules/**", "**/.next/**", "**/dist/**", "**/coverage/**"],
+  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/.cloudflare/**"],
   "env": {
     "builtin": true
   }

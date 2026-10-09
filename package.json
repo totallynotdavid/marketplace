@@ -1,24 +1,34 @@
 {
   "name": "sentinel",
   "private": true,
-  "workspaces": [
-    "apps/web"
-  ],
+  "type": "module",
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev --parallel",
+    "dev": "cf dev",
+    "build": "cf build",
+    "deploy": "cf deploy",
+    "create-admin": "bun scripts/create-admin.ts",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint --type-aware --deny-warnings .",
-    "lint:fix": "oxlint --type-aware --fix --fix-suggestions .",
-    "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "4.13.13",
+    "valibot": "1.5.0"
   },
   "devDependencies": {
-    "oxfmt": "^0.48.0",
-    "oxlint": "^1.63.0",
-    "oxlint-tsgolint": "^0.22.1",
-    "turbo": "2.9.12"
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
+    "@cloudflare/vitest-plugin": "1.4.0",
+    "@cloudflare/workers-types": "5.20261009.1",
+    "@types/node": "^26.6.4",
+    "cf": "1.0.0-beta.13",
+    "oxfmt": "^0.72.0",
+    "oxlint": "^1.87.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.3"
   },
   "packageManager": "bun@1.3.13"
 }

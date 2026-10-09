@@ -1,29 +1,11 @@
-# Generated GraphQL types (regenerate with `pnpm generate` and `pnpm generate:checkout`)
-gql/
-src/checkout/graphql/generated/
-
-# dependencies
-/node_modules
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# local env files
-.env*.local
-
-# vercel
-.vercel
-.turbo
-
-# typescript
+node_modules/
+dist/
+.cloudflare/
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
 *.tsbuildinfo
-next-env.d.ts
-/test-results/
-
-# folders
-/.clerk/
-/.idea/
+*.log
+.DS_Store
