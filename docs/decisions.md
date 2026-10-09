@@ -73,10 +73,8 @@ not a user. The debtor is a name on the listing.
 
 ## Auth design
 
-Auth is built in the application, on the same database as everything else. No
-third-party identity service: a session check that needs an external service
-cannot be tested through the real entry point, and the product does not need
-one.
+Auth is built in the application and uses the same database as the marketplace.
+The request path and the tests use the Worker's real entry point.
 
 ### Sessions
 
@@ -133,9 +131,6 @@ one.
 - A successful sign-in clears the email counter and not the IP counter.
 - Reset-link redemption is limited to 20 attempts per client IP in 15 minutes.
   Registration is limited to 10 per client IP per hour.
-- Someone who knows an email can lock that email out of sign-in for the rest of
-  a 15-minute window by failing five times. The limit trades that for a bound on
-  password guessing.
 
 ### Password reset
 
@@ -144,8 +139,7 @@ one.
   link is shown once, in the response that issues it.
 - Redeeming a link sets the password, deletes the link and deletes all the
   user's sessions in one batch. Of two concurrent redemptions, one succeeds.
-- No email is sent. The product has no mail provider, and a reset flow that
-  silently fails without one is worse than one an admin hands over.
+- The reset link is returned to the admin. No email is sent.
 
 ### Request safety
 
@@ -160,24 +154,6 @@ one.
 - Every admin action writes an audit row in the same batch as the action. An
   action that changes nothing writes no row.
 
-### Lessons applied
-
-Each rule above answers a defect found in earlier products:
-
-| Defect                                                                             | Rule                                                                          |
-| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| A role stored in two places drifted apart, and a user signed in as the wrong role. | One `users.role` column. No membership table, no second copy.                 |
-| A framework endpoint let an owner promote a member past the app's own check.       | No auth plugin with its own endpoints. A test lists the routes that exist.    |
-| A user was created, the follow-up step failed, and the error was swallowed.        | The user and the session are written in one batch. No error is swallowed.     |
-| A deactivated user kept a working session.                                         | Every request re-reads the user.                                              |
-| Reset tokens were kept in plaintext on the user row and leaked in `/me`.           | Digest-only storage in its own table. No page selects it.                     |
-| A password change left other sessions alive.                                       | Redeeming a reset deletes all sessions of the user.                           |
-| An expired-row sweep was written and never scheduled.                              | Expiry is checked on read. The sweep is housekeeping, and has a test.         |
-| An audited write could skip its audit row.                                         | The audit row is in the same batch as the action.                             |
-| A duplicate-user error returned 500 instead of 409.                                | Registration answers a duplicate email with 409, and a test checks it.        |
-| A transition was undocumented, so reviewers could not check it.                    | The state tables in this file list every transition and who moves it.         |
-| Nothing limited password guessing.                                                 | Counters per email and per IP, counted before the check, tested concurrently. |
-
 ## Stack
 
 - Runtime: a Cloudflare Worker with the Hono framework, server-rendered HTML, no
@@ -188,19 +164,3 @@ Each rule above answers a defect found in earlier products:
 - Tests: Vitest in the Workers runtime with a real D1 database. Tests call the
   Worker's `fetch` the way a browser does: they register, sign in with the
   returned cookie, and move a session's stored timestamps to expire it.
-
-There is no wallet, ledger or balance table. Sentinel holds no money.
-
-## What was cut
-
-| Cut                                                                         | Why                                                                                                                                                                                                                                                                                                                                      |
-| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/agent` (Google ADK, LiteLLM, credit scoring, matching)                | It does not earn its place. The web app reaches it through a proxy to a fixed Cloud Run URL, and the only caller is the chat widget. Scores and "factor" profiles live in tables nothing else reads.                                                                                                                                     |
-| `apps/chain` (Solana vault program) and all wallet code                     | Funds held on chain and mirrored in a database balance need a custodian, a reconciliation job and a legal basis. The product does not need any of them to match a seller and a funder. The deposit route also credits the balance from a client-supplied transaction signature with no uniqueness check, so one deposit can be replayed. |
-| Docker compose, Makefile, devcontainer                                      | The database is D1. `cf dev` runs the Worker and a local D1.                                                                                                                                                                                                                                                                             |
-| Clerk                                                                       | An external identity service cannot be driven by a test, and it left users with an empty email and no role.                                                                                                                                                                                                                              |
-| Next.js, Tailwind, React, SWR and the Solana client libraries               | The product is forms and tables. A server-rendered Worker is smaller and deploys on one runtime.                                                                                                                                                                                                                                         |
-| Counter-offers and offer expiry                                             | A counter adds a state machine for a feature no one asked for. A funder who wants a different price withdraws and offers again. Offers carry an expiry date today, but `expireOffer` in `apps/web/src/lib/db/queries/offers.ts` has no caller, so no offer ever expires.                                                                 |
-| Risk category, document link, negotiation deadline                          | The seller picks the risk category from a menu and nothing verifies it, so it tells a funder nothing. No form or route sets the document link. The negotiation deadline is set when the first offer arrives and no code reads it.                                                                                                        |
-| `documentos`, `credit_scores`, `cedentes`, `factores`, `intenciones` tables | Defined in the web schema and queried only by the agent.                                                                                                                                                                                                                                                                                 |
-| PostgreSQL schema and `migrations/0000_*.sql`                               | Databases are disposable. The new schema has no relation to the old one.                                                                                                                                                                                                                                                                 |
