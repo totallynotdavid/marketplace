@@ -9,6 +9,8 @@ It is a Cloudflare Worker (Hono, server-rendered HTML) on a D1 database. Roles
 are `seller`, `funder` and `admin`. See [docs/decisions.md](docs/decisions.md)
 for the feature set and the auth design.
 
+Live deployment: <https://sentinel.caefisica.workers.dev>
+
 ## Requirements
 
 - Bun 1.3 and Node 22.18 or later (`mise install` sets both up). The `cf` CLI
@@ -20,11 +22,13 @@ for the feature set and the auth design.
 
 ```bash
 bun install
+cf d1 migrations apply <database-id> --local
 bun run dev
 ```
 
 `bun run dev` starts the Worker with a local D1 database at the address it
-prints. Create the tables once with the SQL in `migrations/0001_init.sql`.
+prints. The migration command creates the tables from
+`migrations/0001_init.sql`.
 
 ## Commands
 
@@ -50,6 +54,11 @@ ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=... bun run create-admin <database-id
 
 `<database-id>` is the `id` that `cf d1 create` prints. A database change edits
 `migrations/0001_init.sql`; drop the database and run the steps again.
+
+The Worker takes no environment variables; its only binding is the D1 database
+`DB`. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are read by `create-admin` and nowhere
+else. The first admin is the only one that command creates, so run it once after
+the migration.
 
 ## Layout
 
