@@ -47,7 +47,7 @@ let changes: number | undefined;
 try {
   changes = changesIn(JSON.parse(run.stdout));
 } catch {
-  // Reported below with the raw output.
+  // Keep the raw output when the CLI result has an unknown shape.
 }
 if (changes === undefined) {
   console.error(`cf d1 query printed a result this script cannot read:\n${run.stdout}`);
