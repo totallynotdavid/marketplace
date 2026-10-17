@@ -1,8 +1,8 @@
 import { app } from "./app.ts";
 import { REGISTER_WINDOW_MS, SESSION_IDLE_MS, type Env } from "./env.ts";
 
-// Expiry is enforced when a row is read. The sweep removes rows nobody reads again.
-async function sweep(db: D1Database, now = Date.now()): Promise<void> {
+async function sweep(db: D1Database): Promise<void> {
+  const now = Date.now();
   await db.batch([
     db
       .prepare("DELETE FROM sessions WHERE expires_at <= ?1 OR last_seen_at <= ?1 - ?2")

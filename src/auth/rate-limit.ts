@@ -1,14 +1,12 @@
-export type Verdict = { allowed: boolean; retryAfter: number };
+type Verdict = { allowed: boolean; retryAfter: number };
 
-// Counts the attempt before anything else runs, in one statement, so concurrent attempts
-// cannot all read a count under the limit. A stale window restarts at 1.
 export async function hit(
   db: D1Database,
   key: string,
   limit: number,
   windowMs: number,
-  now = Date.now(),
 ): Promise<Verdict> {
+  const now = Date.now();
   const row = await db
     .prepare(
       `INSERT INTO rate_limits (key, window_start, count) VALUES (?1, ?2, 1)

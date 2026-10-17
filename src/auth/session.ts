@@ -55,12 +55,8 @@ type Row = {
   expires_at: number;
 };
 
-// Expiry and the user's active flag are checked on every read.
-export async function readSession(
-  db: D1Database,
-  token: string,
-  now = Date.now(),
-): Promise<SessionUser | null> {
+export async function readSession(db: D1Database, token: string): Promise<SessionUser | null> {
+  const now = Date.now();
   const tokenDigest = await digest(token);
   const row = await db
     .prepare(
