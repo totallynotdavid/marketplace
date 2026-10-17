@@ -2,10 +2,8 @@ import * as v from "valibot";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./auth/password.ts";
 
 export const CURRENCIES = ["USD", "PEN"] as const;
-export type Currency = (typeof CURRENCIES)[number];
 
-// Decimal text to the minor unit, without floating point. Two decimals at most.
-export function parseMoney(text: string): number | null {
+function parseMoney(text: string): number | null {
   const match = /^(\d{1,12})(?:\.(\d{1,2}))?$/.exec(text.trim());
   if (!match) return null;
   const minor = Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
@@ -78,7 +76,7 @@ export const loginForm = v.object({
   password: v.pipe(v.string(), v.maxLength(MAX_PASSWORD_LENGTH)),
 });
 
-export type ParseResult<T> = { ok: true; value: T } | { ok: false; message: string };
+type ParseResult<T> = { ok: true; value: T } | { ok: false; message: string };
 
 export function parseForm<S extends v.GenericSchema>(
   schema: S,
