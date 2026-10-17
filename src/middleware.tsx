@@ -44,8 +44,7 @@ export const requireUser = createMiddleware<AppEnv>(async (c, next) => {
 
 export function allow(...roles: Role[]) {
   return createMiddleware<AppEnv>(async (c, next) => {
-    const user = c.get("user");
-    if (!user) return c.html(<SignInRequired />, 401);
+    const user = c.get("user")!;
     if (!roles.includes(user.role)) {
       return c.html(
         <Message title="Not allowed" text="Your role cannot do this." user={user} />,
