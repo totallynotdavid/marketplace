@@ -101,8 +101,6 @@ The request path and the tests use the Worker's real entry point.
 - Sign-in for an unknown email runs a hash against a dummy value, so the
   response time does not reveal whether the email exists. Unknown email, wrong
   password and deactivated user return the same status and the same page.
-- One hash costs about 160 ms of CPU. The Workers Free plan allows 10 ms of CPU
-  per request, so Sentinel needs the Workers Paid plan.
 
 ### Roles
 
