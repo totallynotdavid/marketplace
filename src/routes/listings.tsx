@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv, SessionUser } from "../env.ts";
+import { audit } from "../audit.ts";
 import { offerForm, parseForm, listingForm } from "../forms.ts";
 import { conflict, formBody, isUniqueViolation, notFound } from "../http.tsx";
 import { allow } from "../middleware.tsx";
@@ -18,9 +19,6 @@ const LISTING_COLUMNS = `l.id, l.seller_id, l.debtor_name, l.currency, l.face_va
 
 type StoredListing = ListingRow & { seller_id: string };
 
-// Returns null when the listing does not exist or the user may not see it, so both look the same.
-// A seller sees their own listings. A funder sees open listings and any listing they made an
-// offer on. An admin sees all.
 async function loadListing(
   db: D1Database,
   user: SessionUser,
@@ -101,8 +99,6 @@ listingRoutes.get("/listings/:id", async (c) => {
   return c.html(<ListingDetailPage user={user} {...found} />);
 });
 
-// A seller cancels their own listing and an admin cancels any. The listing state changes first;
-// the audit row follows it, and pending offers settle in the same batch.
 listingRoutes.post("/listings/:id/cancel", allow("seller", "admin"), async (c) => {
   const db = c.env.DB;
   const user = c.get("user")!;
@@ -115,32 +111,20 @@ listingRoutes.post("/listings/:id/cancel", allow("seller", "admin"), async (c) =
   if (listing.status !== "open") return conflict(c, "Only an open listing can be cancelled.");
 
   const now = Date.now();
-  const statements = [
+  const [cancelled] = await db.batch([
     db
       .prepare(
         "UPDATE listings SET status = 'cancelled', updated_at = ?2 WHERE id = ?1 AND status = 'open'",
       )
       .bind(id, now),
-  ];
-  if (user.role === "admin") {
-    statements.push(
-      db
-        .prepare(
-          `INSERT INTO audit_log (admin_id, action, target, created_at)
-           SELECT ?2, 'cancel-listing', ?1, ?3 WHERE changes() > 0`,
-        )
-        .bind(id, user.id, now),
-    );
-  }
-  statements.push(
+    ...(user.role === "admin" ? [audit(db, user.id, "cancel-listing", id, now)] : []),
     db
       .prepare(
         "UPDATE offers SET status = 'rejected', updated_at = ?2 WHERE listing_id = ?1 AND status = 'pending'",
       )
       .bind(id, now),
-  );
-  const results = await db.batch(statements);
-  if (results[0]?.meta.changes !== 1) return conflict(c, "Only an open listing can be cancelled.");
+  ]);
+  if (cancelled?.meta.changes !== 1) return conflict(c, "Only an open listing can be cancelled.");
   return c.redirect(`/listings/${id}`, 303);
 });
 

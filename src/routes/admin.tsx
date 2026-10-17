@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { RESET_TTL_MS, type AppEnv } from "../env.ts";
+import { audit } from "../audit.ts";
 import { digest, newToken } from "../auth/token.ts";
 import { conflict, notFound } from "../http.tsx";
 import { allow } from "../middleware.tsx";
@@ -30,16 +31,6 @@ adminRoutes.get("/admin/audit", async (c) => {
   return c.html(<AuditPage user={c.get("user")!} rows={results} />);
 });
 
-// Each action writes its audit row in the same batch as the change it records.
-function audit(db: D1Database, adminId: string, action: string, target: string, now: number) {
-  return db
-    .prepare(
-      `INSERT INTO audit_log (admin_id, action, target, created_at)
-       SELECT ?1, ?2, ?3, ?4 WHERE changes() > 0`,
-    )
-    .bind(adminId, action, target, now);
-}
-
 adminRoutes.post("/admin/users/:id/deactivate", async (c) => {
   const db = c.env.DB;
   const admin = c.get("user")!;
@@ -52,8 +43,7 @@ adminRoutes.post("/admin/users/:id/deactivate", async (c) => {
   if (target.role === "admin") return conflict(c, "An admin cannot be deactivated.");
   if (!target.active) return c.redirect("/admin/users", 303);
 
-  // Reject the seller's pending offers before cancelling the listings. The accept path relies on
-  // every pending offer belonging to an open listing, and the subquery selects only open ones.
+  // The offers update selects through open listings, so it must run before they are cancelled.
   const now = Date.now();
   await db.batch([
     db.prepare("UPDATE users SET active = 0 WHERE id = ? AND active = 1").bind(id),
@@ -98,8 +88,6 @@ adminRoutes.post("/admin/users/:id/reactivate", async (c) => {
   return c.redirect("/admin/users", 303);
 });
 
-// The link is shown once, in this response. Only its digest is stored, and a new link replaces
-// the previous one.
 adminRoutes.post("/admin/users/:id/reset", async (c) => {
   const db = c.env.DB;
   const admin = c.get("user")!;
