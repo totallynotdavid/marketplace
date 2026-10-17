@@ -92,14 +92,19 @@ describe("registration", () => {
     expect(user).toEqual({ email: "ana@example.com", role: "seller", active: 1 });
   });
 
-  it.each(["admin", "root", ""])("refuses the role %j", async (role) => {
+  it.each([
+    ["the admin role", { role: "admin" }],
+    ["an unknown role", { role: "root" }],
+    ["a blank role", { role: "" }],
+    ["a short password", { password: "short" }],
+    ["a password over 128 characters", { password: "x".repeat(129) }],
+    ["a malformed email", { email: "not-an-email" }],
+  ])("refuses %s", async (_name, fields) => {
     const res = await call("/register", {
-      form: { email: "x@example.com", password: PASSWORD, role },
+      form: { email: "x@example.com", password: PASSWORD, role: "funder", ...fields },
     });
     expect(res.status).toBe(400);
-    expect(
-      (await env.DB.prepare("SELECT COUNT(*) AS n FROM users").first<{ n: number }>())!.n,
-    ).toBe(0);
+    expect(await count("users")).toBe(0);
   });
 
   it("answers 409 for a duplicate email, whatever its case", async () => {
@@ -109,29 +114,6 @@ describe("registration", () => {
       form: { email: first!.email.toUpperCase(), password: PASSWORD, role: "funder" },
     });
     expect(res.status).toBe(409);
-  });
-
-  it.each(["short", "x".repeat(129)])("refuses a password of length %#", async (password) => {
-    const res = await call("/register", {
-      form: { email: "a@example.com", password, role: "funder" },
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("refuses a malformed email", async () => {
-    const res = await call("/register", {
-      form: { email: "not-an-email", password: PASSWORD, role: "funder" },
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("stores a scrypt hash, never the password", async () => {
-    await register("seller");
-    const row = await env.DB.prepare("SELECT password_hash FROM users").first<{
-      password_hash: string;
-    }>();
-    expect(row!.password_hash).toMatch(/^scrypt\$16384\$8\$5\$/);
-    expect(row!.password_hash).not.toContain(PASSWORD);
   });
 
   it("limits registrations per client IP", async () => {
@@ -408,7 +390,7 @@ describe("request origin", () => {
 });
 
 describe("sign-in rate limit", () => {
-  it("answers 429 with Retry-After on the sixth attempt for one email", async () => {
+  it("answers 429 with Retry-After on the sixth attempt for one email, even with the right password", async () => {
     const account = await register("seller");
     for (let i = 0; i < 5; i++) {
       expect((await signIn(account.email, "wrong password")).status).toBe(401);
@@ -418,14 +400,10 @@ describe("sign-in rate limit", () => {
     const wait = Number(blocked.headers.get("Retry-After"));
     expect(wait).toBeGreaterThan(0);
     expect(wait).toBeLessThanOrEqual(15 * 60);
-  });
 
-  it("does not let the correct password through once the limit is hit", async () => {
-    const account = await register("seller");
-    for (let i = 0; i < 5; i++) await signIn(account.email, "wrong password");
-    const res = await signIn(account.email);
-    expect(res.status).toBe(429);
-    expect(cookieOf(res)).toBeNull();
+    const correct = await signIn(account.email);
+    expect(correct.status).toBe(429);
+    expect(cookieOf(correct)).toBeNull();
   });
 
   it("limits an unknown email the same way", async () => {

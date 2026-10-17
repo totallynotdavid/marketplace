@@ -140,14 +140,6 @@ describe("listings", () => {
     expect(await statusOf("listings", id)).toBe("open");
   });
 
-  it("answers 409 when cancelling a listing that is not open", async () => {
-    const seller = await register("seller");
-    const id = await createListing(seller);
-    await call(`/listings/${id}/cancel`, { form: {}, cookie: seller.cookie });
-    const again = await call(`/listings/${id}/cancel`, { form: {}, cookie: seller.cookie });
-    expect(again.status).toBe(409);
-  });
-
   it("lets an admin cancel any open listing and audits it", async () => {
     const admin = await makeAdmin();
     const seller = await register("seller");

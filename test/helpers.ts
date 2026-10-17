@@ -1,6 +1,7 @@
 import { createExecutionContext, createScheduledController } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import worker from "../src/index.ts";
+import { hashPassword } from "../src/auth/password.ts";
 import { digest } from "../src/auth/token.ts";
 
 export const ORIGIN = "https://sentinel.test";
@@ -15,7 +16,6 @@ type CallOptions = {
   origin?: string | null;
 };
 
-// Every request goes through the Worker's default export, as the runtime delivers it.
 export async function call(path: string, options: CallOptions = {}): Promise<Response> {
   const method = options.method ?? (options.form ? "POST" : "GET");
   const headers = new Headers();
@@ -58,9 +58,8 @@ export async function register(role: "seller" | "funder", ip?: string): Promise<
   return { email, id: row!.id, cookie };
 }
 
-// Tests insert the same admin row that the production create-admin script creates.
+// The create-admin statement allows one admin, so extra admins are inserted directly.
 export async function makeAdmin(): Promise<Account> {
-  const { hashPassword } = await import("../src/auth/password.ts");
   const email = `admin${++counter}@example.com`;
   const id = crypto.randomUUID();
   await env.DB.prepare(
