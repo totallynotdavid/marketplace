@@ -38,8 +38,6 @@ offerRoutes.post("/offers/:id/withdraw", allow("funder"), async (c) => {
   return own ? conflict(c, "Only a pending offer can be withdrawn.") : notFound(c);
 });
 
-// Only the seller of the offer's listing may decide it. Any other seller gets the same 404 as a
-// missing offer.
 async function ownedOffer(c: Context<AppEnv>, id: string) {
   return c.env.DB.prepare(
     `SELECT o.listing_id FROM offers o JOIN listings l ON l.id = o.listing_id
@@ -62,10 +60,8 @@ offerRoutes.post("/offers/:id/reject", allow("seller"), async (c) => {
   return c.redirect(`/listings/${offer.listing_id}`, 303);
 });
 
-// A pending offer always sits on an open listing, because every path that closes a listing
-// settles its pending offers in the same batch. Accepting the offer is therefore the one check
-// that decides a race: of two concurrent accepts, the second finds its offer already rejected
-// and its other two statements change nothing.
+// The first statement decides a race: when it changes nothing, the other two find no accepted
+// offer and change nothing either.
 offerRoutes.post("/offers/:id/accept", allow("seller"), async (c) => {
   const db = c.env.DB;
   const id = c.req.param("id");

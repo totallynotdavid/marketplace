@@ -20,7 +20,6 @@ function derive(password: string, salt: Buffer, options: ScryptOptions): Promise
   });
 }
 
-// The stored form is `scrypt$N$r$p$salt$hash`, so the parameters can change without a migration.
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(SALT_LENGTH);
   const key = await derive(password, salt, { N, r: R, p: P, maxmem: MAX_MEMORY });

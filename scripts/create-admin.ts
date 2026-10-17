@@ -1,4 +1,3 @@
-// Creates the first admin in a deployed D1 database. It refuses when an admin already exists.
 import { spawnSync } from "node:child_process";
 import { adminInsert } from "../src/bootstrap.ts";
 

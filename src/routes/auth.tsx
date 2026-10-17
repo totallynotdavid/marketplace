@@ -73,8 +73,6 @@ authRoutes.get("/login", (c) =>
   c.get("user") ? c.redirect("/listings", 303) : c.html(<LoginPage />),
 );
 
-// Every failure after the form is read returns this page with status 401, so the response
-// does not say whether the email exists, the password was wrong, or the account is deactivated.
 const SIGN_IN_FAILED = "Wrong email or password.";
 
 authRoutes.post("/login", async (c) => {
@@ -86,8 +84,6 @@ authRoutes.post("/login", async (c) => {
   if (!form.ok) return c.html(<LoginPage error={SIGN_IN_FAILED} />, 401);
   const { email, password } = form.value;
 
-  // The attempt is counted before the password is checked, so a correct guess after the limit
-  // is still refused.
   const emailKey = `login:email:${email}`;
   const byEmail = await hit(db, emailKey, LOGIN_EMAIL_LIMIT, RATE_WINDOW_MS);
   if (!byEmail.allowed) return tooMany(c, byEmail.retryAfter);
