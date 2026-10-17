@@ -3,22 +3,15 @@
 ## always
 
 - use repo-local facts before assumptions
-- use `bun` for JS workflows; run `cf` commands under Node
+- run `cf` commands under Node
 - follow existing architecture; keep changes minimal and task-local
 - fix root causes, not symptoms
 - state what was verified vs inferred
 
 ## commands
 
-- `bun install`
-- `bun run dev`: Worker with a local D1
-- `bun run test`: Vitest in the Workers runtime, real D1
-- `bun run lint`
-- `bun run typecheck`
-- `bun run format`
-- `bun run build`
-- `bun run deploy`
-- `bun run create-admin <database-id>`: needs `ADMIN_EMAIL` and `ADMIN_PASSWORD`
+- run commands as mise tasks; `mise tasks` lists them
+- run `mise run check` before you finish
 
 ## coding rules
 
@@ -37,5 +30,4 @@
 - use sentence-case headings
 - keep docs operational: setup, commands, env vars, troubleshooting
 - avoid filler and process narrative
-- format markdown with
-  `bunx prettier --print-width 80 --prose-wrap always --write '**/*.md'`
+- format markdown with `mise run fix`
