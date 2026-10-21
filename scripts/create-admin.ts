@@ -21,7 +21,7 @@ function changesIn(value: unknown): number | undefined {
 const [databaseId] = process.argv.slice(2);
 const { ADMIN_EMAIL: email, ADMIN_PASSWORD: password } = process.env;
 if (!databaseId || !email || !password) {
-  console.error("Usage: ADMIN_EMAIL=... ADMIN_PASSWORD=... mise run create-admin <database-id>");
+  console.error("Usage: ADMIN_EMAIL=... ADMIN_PASSWORD=... bun run create-admin <database-id>");
   process.exit(1);
 }
 
