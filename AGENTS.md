@@ -10,8 +10,8 @@
 
 ## commands
 
-- run commands as mise tasks; `mise tasks` lists them
-- run `mise run check` before you finish
+- run commands as package.json scripts with `bun run <script>`
+- run `bun run check` before you finish
 
 ## coding rules
 
@@ -30,4 +30,4 @@
 - use sentence-case headings
 - keep docs operational: setup, commands, env vars, troubleshooting
 - avoid filler and process narrative
-- format markdown with `mise run fix`
+- format markdown with `bun run fix`
