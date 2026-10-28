@@ -9,26 +9,26 @@
     "test": "vitest run",
     "build": "cf build",
     "check": "bun run lint && bun run typecheck && bun run test && bun run build",
-    "dev": "CLOUDFLARE_REGISTRY_PATH=.wrangler/registry cf dev --persist-to .wrangler/state",
-    "db:migrate:local": "CLOUDFLARE_REGISTRY_PATH=.wrangler/registry cf d1 migrations apply 12345678-1234-4234-8234-123456789abc --local --persist-to .wrangler/state",
+    "dev": "cf dev",
+    "db:migrate:local": "cf d1 migrations apply 12345678-1234-4234-8234-123456789abc --local --persist-to .cloudflare/state",
     "deploy": "cf deploy",
     "create-admin": "bun scripts/create-admin.ts"
   },
   "dependencies": {
-    "hono": "4.13.13",
+    "hono": "4.13.14",
     "valibot": "1.5.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
-    "@cloudflare/vitest-plugin": "1.4.6",
-    "@cloudflare/workers-types": "5.20261019.1",
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.6",
+    "@cloudflare/vitest-plugin": "1.4.9",
+    "@cloudflare/workers-types": "5.20261028.1",
     "@types/node": "^26.6.5",
-    "cf": "1.0.0-beta.13",
-    "oxfmt": "^0.74.0",
-    "oxlint": "^1.89.0",
-    "oxlint-tsgolint": "^7.0.2004",
+    "cf": "1.0.0-beta.24",
+    "oxfmt": "^0.75.0",
+    "oxlint": "^1.90.0",
+    "oxlint-tsgolint": "^7.0.2005",
     "typescript": "7.0.2",
-    "vite": "8.3.4",
+    "vite": "8.3.5",
     "vitest": "5.0.5"
   }
 }
